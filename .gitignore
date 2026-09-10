@@ -1,0 +1,13 @@
+# Real WiFi/MQTT credentials - copy secrets.h.example to secrets.h
+secrets.h
+
+# Arduino IDE / PlatformIO build artifacts
+build/
+.pio/
+*.o
+*.elf
+*.hex
+
+# OS junk
+.DS_Store
+Thumbs.db
