@@ -34,24 +34,13 @@ HardwareSerial maxsensor(1);
 
 
 // =====================================================
-// WIFI SETTINGS
+// WIFI / MQTT SETTINGS
+//
+// Kept out of source control: copy secrets.h.example to
+// secrets.h (gitignored) and fill in your own values.
 // =====================================================
 
-#define WIFI_SSID       "DHA"
-#define WIFI_PASSWORD   "12345678"
-
-
-// =====================================================
-// MQTT SETTINGS
-// =====================================================
-
-#define MQTT_SERVER     "broker.hivemq.com"
-#define MQTT_PORT       1883
-
-// #define MQTT_USER       "YOUR_MQTT_USERNAME"
-// #define MQTT_PASSWORD   "YOUR_MQTT_PASSWORD"
-
-#define MQTT_TOPIC      "aries/em6400/data"
+#include "secrets.h"
 
 
 // =====================================================
@@ -183,14 +172,14 @@ void connectToWIFI()
     // CHECK WIFI MODULE
     // -------------------------------------------------
 
-    if (WiFi.status() == WL_NO_MODULE)
+    // Keep retrying instead of hanging forever: a transient init
+    // failure can clear itself, and this way the board stays
+    // responsive (e.g. to a watchdog) instead of freezing for good.
+    while (WiFi.status() == WL_NO_MODULE)
     {
-        Serial.println("Communication with WiFi module failed!");
+        Serial.println("Communication with WiFi module failed! Retrying...");
 
-        while (true)
-        {
-            delay(1000);
-        }
+        delay(1000);
     }
 
 
@@ -286,7 +275,6 @@ void connectMQTT()
 
         if (mqttClient.connect(
                 clientID.c_str()))
-                
         {
             Serial.println("CONNECTED");
 
@@ -590,6 +578,15 @@ bool readFloatAddress(
 
     // -------------------------------------------------
     // CONVERT TO FLOAT
+    //
+    // Assumes the EM6400 NG+ returns each 32-bit float as
+    // two big-endian registers in normal word order
+    // (register words ABCD, byte order: response[3..6]).
+    // Some Modbus energy meters instead use a word-swapped
+    // (CDAB) float layout for the same register range -
+    // if readings come back wildly wrong/NaN, check the
+    // EM6400 NG+ Modbus map for the actual float encoding
+    // before trusting this cast.
     // -------------------------------------------------
 
     uint32_t raw =
